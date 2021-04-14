@@ -10,7 +10,7 @@ import pickle
 import dgl
 import numpy as np
 import torch
-import wandb
+#import wandb
 
 from torch import optim
 from torch.utils.data import DataLoader
@@ -38,7 +38,7 @@ def train_epoch(epoch, model, loss_function, dataloader, optimizer, schedule, FL
                                              convergence_tolerance=FLAGS.gd_tolerance)
 
     num_iters = len(dataloader)
-    wandb.log({"lr": optimizer.param_groups[0]['lr']}, commit=False)
+    print({"lr": optimizer.param_groups[0]['lr']}) #, commit=False)
 
     for i, g in enumerate(dataloader):
         g = g.to(FLAGS.device)
@@ -64,7 +64,7 @@ def train_epoch(epoch, model, loss_function, dataloader, optimizer, schedule, FL
             print(f"[{epoch}|{i}] loss: {loss:.5f}")
 
         if i % FLAGS.log_interval == 0:
-            wandb.log({"Train Batch Loss": to_np(loss)}, commit=True)
+            print({"Train Batch Loss": to_np(loss)}) #, commit=True)
 
         # Gradient descent post-processing
         if FLAGS.gd_post_process:
@@ -79,7 +79,7 @@ def train_epoch(epoch, model, loss_function, dataloader, optimizer, schedule, FL
                     print(f"[{epoch}|{i}] tuned loss: {to_np(tuned_loss):.5f}")
 
                 if i % FLAGS.log_interval == 0:
-                    wandb.log({"Train Batch Tuned Loss": to_np(tuned_loss)}, commit=False)
+                    print({"Train Batch Tuned Loss": to_np(tuned_loss)}) # , commit=False)
 
         # Exit early if only do profiling
         if FLAGS.profile and i == 10:
@@ -90,15 +90,15 @@ def train_epoch(epoch, model, loss_function, dataloader, optimizer, schedule, FL
     # Gradient logging
     basis_gradients = utils_logging.get_average('Basis computation flow')
     utils_logging.clear_data('Basis computation flow')
-    wandb.log({"Average gradient norm: Basis": basis_gradients}, commit=False)
+    print({"Average gradient norm: Basis": basis_gradients}) #, commit=False)
 
     network_gradients = utils_logging.get_average('Neural networks flow')
     utils_logging.clear_data('Neural networks flow')
-    wandb.log({"Average gradient norm: Neural nets": network_gradients}, commit=False)
+    print({"Average gradient norm: Neural nets": network_gradients}) #, commit=False)
 
     # Loss logging
     average_loss = np.mean(np.array(loss_log))
-    wandb.log({"Train Epoch Loss": average_loss}, commit=False)
+    print({"Train Epoch Loss": average_loss}) #, commit=False)
 
     """
     A note about 'update norms':
@@ -110,18 +110,18 @@ def train_epoch(epoch, model, loss_function, dataloader, optimizer, schedule, FL
     """
 
     average_update_norm = np.mean(np.array(update_norm_log))
-    wandb.log({"Average Update Norm": average_update_norm}, commit=False)
+    print({"Average Update Norm": average_update_norm}) #, commit=False)
 
     for j in range(FLAGS.num_iter):
         avg_steps = np.mean(np.array(update_norm_steps_log[j]))
-        wandb.log({f"Average Update Norm {j}": avg_steps}, commit=False)
+        print({f"Average Update Norm {j}": avg_steps}) #, commit=False)
 
     if FLAGS.gd_post_process:
         average_tuned_loss = np.mean(np.array(tuned_loss_log))
-        wandb.log({"Train Epoch Tuned Loss": average_tuned_loss}, commit=False)
+        print({"Train Epoch Tuned Loss": average_tuned_loss}) #, commit=False)
 
         average_tuned_update_norm = np.mean(np.array(tuned_update_norm_log))
-        wandb.log({"Average Tuned Update Norm": average_tuned_update_norm}, commit=False)
+        print({"Average Tuned Update Norm": average_tuned_update_norm}) #, commit=False)
 
 
 def run_forward_pass(model, *, dataloader, loss_function):
@@ -148,21 +148,21 @@ def run_forward_pass(model, *, dataloader, loss_function):
         if i % FLAGS.print_interval == 0:
             print(f"[0|{i}] loss: {loss:.5f}")
 
-        wandb.log({"Train Batch Loss": to_np(loss)}, commit=True)
+        print({"Train Batch Loss": to_np(loss)}) #, commit=True)
 
         # Exit early if only do profiling
         if FLAGS.profile and i == 10:
             sys.exit()
 
     average_loss = np.mean(np.array(losses))
-    wandb.log({"Train Epoch Loss": average_loss}, commit=False)
+    print({"Train Epoch Loss": average_loss}) #, commit=False)
 
     average_update_norm = np.mean(np.array(update_norms))
-    wandb.log({"Average Update Norm": average_update_norm}, commit=False)
+    print({"Average Update Norm": average_update_norm}) #, commit=False)
 
     for j in range(FLAGS.num_iter):
         avg_steps = np.mean(np.array(update_norm_steps[j]))
-        wandb.log({f"Average Update Norm {j}": avg_steps}, commit=False)
+        print({f"Average Update Norm {j}": avg_steps}) #, commit=False)
 
 
 def collate(list_of_graphs):
@@ -190,9 +190,9 @@ def log_batch(model, dataloader, FLAGS):
         for batched_graph in g_steps
     ]
 
-    filename = os.path.join(wandb.run.dir, "optimisation_steps.pkl")
-    with open(filename, "wb") as file:
-        pickle.dump(log_values, file)
+    #filename = os.path.join(wandb.run.dir, "optimisation_steps.pkl")
+    #with open(filename, "wb") as file:
+    #    pickle.dump(log_values, file)
 
 
 def drop_to_debugger_or_dump_exception(FLAGS):
@@ -202,8 +202,9 @@ def drop_to_debugger_or_dump_exception(FLAGS):
         traceback.print_exc()
         pdb.post_mortem()
     else:
-        with open(os.path.join(wandb.run.dir, "exception.txt"), "w") as file:
-            traceback.print_exc(file=file)
+        print(traceback)
+        #with open(os.path.join(wandb.run.dir, "exception.txt"), "w") as file:
+        #    traceback.print_exc(file=file)
 
 
 def main(FLAGS, UNPARSED_ARGV):
@@ -224,7 +225,7 @@ def main(FLAGS, UNPARSED_ARGV):
     if isinstance(model, torch.nn.Module):
         model.to(FLAGS.device)
 
-    utils_logging.write_info_file(model, FLAGS=FLAGS, UNPARSED_ARGV=UNPARSED_ARGV, wandb_log_dir=wandb.run.dir)
+    utils_logging.write_info_file(model, FLAGS=FLAGS, UNPARSED_ARGV=UNPARSED_ARGV, wandb_log_dir=None) #wandb.run.dir)
 
     task_loss = compute_overall_potential
 
@@ -254,14 +255,17 @@ def main(FLAGS, UNPARSED_ARGV):
 
 FLAGS, UNPARSED_ARGV = get_flags()
 
+FLAGS.checkpoint_dir = 'ckpt'
+FLAGS.run_name = 'test'
+
 os.makedirs(FLAGS.save_dir, exist_ok=True)
 
 for run in range(FLAGS.num_runs):
     try:
         # Log all args to wandb
-        with wandb.init(project='iterativeSE3', name=f'{FLAGS.name}{run:02d}', config=FLAGS, reinit=True):
-            wandb.save('*.txt')
-            wandb.save('*.pkl')
+        #with wandb.init(project='iterativeSE3', name=f'{FLAGS.name}{run:02d}', config=FLAGS, reinit=True):
+        #    wandb.save('*.txt')
+        #    wandb.save('*.pkl')
 
             try:
                 main(FLAGS, UNPARSED_ARGV)
